@@ -5,19 +5,11 @@ import (
 	"net"
 )
 
-func sum(arr []byte) int {
-	result := 0
-	for _, v := range arr {
-		result += int(v)
-	}
-	return result
-}
-
-func calcChecksum(body [][]byte) byte {
+func calcChecksum(body []byte) byte {
 	checksum := 0
 
 	for i := 0; i < len(body); i++ {
-		checksum += sum(body[i])
+		checksum += int(body[i])
 	}
 
 	return byte(checksum % 256)
@@ -29,12 +21,12 @@ func createMsg() []byte {
 	pay := []byte(nil)
 	size := []byte{byte(3 + len(pay))}
 
-	cs := calcChecksum([][]byte{cmd, pay, size})
-
 	msg := hdr
 	msg = append(msg, cmd...)
 	msg = append(msg, size...)
 	msg = append(msg, pay...)
+
+	cs := calcChecksum(msg[len(hdr):])
 	msg = append(msg, cs)
 	return msg
 }

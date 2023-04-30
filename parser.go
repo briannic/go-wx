@@ -76,7 +76,7 @@ func parseResponse(rsp []byte) error {
 	rspLength := int(binary.BigEndian.Uint16(rsp[3:5]))
 	rspChecksum := rsp[rspLength+1]
 	body := rsp[2 : rspLength+1]
-	if sum(body)%256 != int(rspChecksum) {
+	if calcChecksum(body) != rspChecksum {
 		return errors.New("Checksum mismatch")
 	}
 
