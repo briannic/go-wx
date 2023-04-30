@@ -39,21 +39,27 @@ func createMsg() []byte {
 	return msg
 }
 
-func sendMsg(msg []byte) error {
+func sendMsg(msg []byte) ([]byte, error) {
 	ip := "192.168.4.77:45000"
 	conn, _ := net.Dial("tcp", ip)
 	defer conn.Close()
 
-	_, _ = conn.Write(msg)
+	_, err := conn.Write(msg)
+	if err != nil {
+		return nil, err
+	}
 
 	buf := make([]byte, 1024)
-	_, _ = conn.Read(buf)
-	fmt.Println(buf)
+	_, err = conn.Read(buf)
 
-	return nil
+	return buf, err
 }
 
 func main() {
 	msg := createMsg()
-	sendMsg(msg)
+	response, _ := sendMsg(msg)
+	err := parseResponse(response)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
