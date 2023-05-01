@@ -44,9 +44,8 @@ func sendMsg(msg []byte, ip string, port string) ([]byte, error) {
 	return buf, err
 }
 
-func main() {
-	msg := createMsg([]byte("\x27"), nil)
-	//msg := createMsg([]byte("\x57"), nil)
+func getWxData(cmd []byte) {
+	msg := createMsg(cmd, nil)
 
 	ip := "192.168.4.77"
 	port := "45000"
@@ -61,4 +60,10 @@ func main() {
 		fmt.Println(err)
 	}
 	results.Display()
+
+}
+
+func main() {
+	getWxData([]byte("\x27"))
+	getWxData([]byte("\x57"))
 }

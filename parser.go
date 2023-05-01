@@ -153,6 +153,7 @@ func (r *ApiResults) Display() {
 	for i := 0; i < len(r.data); i++ {
 		r.data[i].Transform()
 	}
+	fmt.Println("------")
 }
 
 func parseResponse(rsp []byte) (ApiResults, error) {
@@ -166,7 +167,11 @@ func parseResponse(rsp []byte) (ApiResults, error) {
 	}
 
 	for i := 5; i < rspLength+1; i++ {
-		def := ApiDefs[rsp[i]]
+		def, found := ApiDefs[rsp[i]]
+		if !found {
+			fmt.Printf("Did not find field '% X', parsing stopped\n", rsp[i])
+			break
+		}
 
 		val := 0
 		x := rsp[i+1 : i+def.offset+1]
