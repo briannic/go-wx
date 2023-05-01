@@ -89,20 +89,64 @@ var tempFields = []string{
 	"OUTTEMP",
 }
 
+var pressureFields = []string{
+	"ABSBARO",
+	"RELBARO",
+}
+
+var percentageFields = []string{
+	"INHUMI",
+	"OUTHUMI",
+}
+
+var velocityFields = []string{
+	"WINDSPEED",
+	"GUSTSPEED",
+	"DAILYWINDMAX",
+}
+
+var lightFields = []string{
+	"LIGHT",
+}
+
 func convertCtoF(c float64) float64 {
-	f := c / 10
-	return (f * 1.8) + 32
+	return (c * 1.8) + 32
+}
+
+func convertHpaToInhg(h float64) float64 {
+	return h / 33.8638
+}
+
+func convertMsToMph(h float64) float64 {
+	return h * 2.237
+}
+
+func convertLuxToWm2(h float64) float64 {
+	return h * 0.0079
 }
 
 func (d *Datapoint) Transform() {
 	value := float64(d.value)
+	unit := ""
 
 	switch {
 	case stringInSlice(d.label, tempFields):
-		value = convertCtoF(value)
+		value = convertCtoF(value / 10)
+		unit = "\u00B0"
+	case stringInSlice(d.label, pressureFields):
+		value = convertHpaToInhg(value / 10)
+		unit = " inhg"
+	case stringInSlice(d.label, percentageFields):
+		unit = "%"
+	case stringInSlice(d.label, velocityFields):
+		value = convertMsToMph(value / 10)
+		unit = " mph"
+	case stringInSlice(d.label, lightFields):
+		value = convertLuxToWm2(value / 10)
+		unit = " w/m^2"
 	}
 
-	fmt.Printf("[%v]%v\t%v\n", d.id, d.label, value)
+	fmt.Printf("[%v]%v\t%.1f%v\n", d.id, d.label, value, unit)
 }
 
 func (r *ApiResults) Display() {
