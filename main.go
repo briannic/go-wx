@@ -15,25 +15,22 @@ func calcChecksum(body []byte) byte {
 	return byte(checksum % 256)
 }
 
-func createMsg() []byte {
+func createMsg(cmd []byte, payload []byte) []byte {
 	hdr := []byte("\xff\xff")
-	cmd := []byte("\x27")
-	pay := []byte(nil)
-	size := []byte{byte(3 + len(pay))}
+	size := []byte{byte(3 + len(payload))}
 
 	msg := hdr
 	msg = append(msg, cmd...)
 	msg = append(msg, size...)
-	msg = append(msg, pay...)
+	msg = append(msg, payload...)
 
 	cs := calcChecksum(msg[len(hdr):])
 	msg = append(msg, cs)
 	return msg
 }
 
-func sendMsg(msg []byte) ([]byte, error) {
-	ip := "192.168.4.77:45000"
-	conn, _ := net.Dial("tcp", ip)
+func sendMsg(msg []byte, ip string, port string) ([]byte, error) {
+	conn, _ := net.Dial("tcp", ip+":"+port)
 	defer conn.Close()
 
 	_, err := conn.Write(msg)
@@ -48,10 +45,20 @@ func sendMsg(msg []byte) ([]byte, error) {
 }
 
 func main() {
-	msg := createMsg()
-	response, _ := sendMsg(msg)
-	err := parseResponse(response)
+	msg := createMsg([]byte("\x27"), nil)
+	//msg := createMsg([]byte("\x57"), nil)
+
+	ip := "192.168.4.77"
+	port := "45000"
+
+	response, err := sendMsg(msg, ip, port)
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	results, err := parseResponse(response)
+	if err != nil {
+		fmt.Println(err)
+	}
+	results.Display()
 }
