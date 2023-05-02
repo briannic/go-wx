@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"time"
 )
 
 type ApiDef struct {
@@ -12,7 +13,8 @@ type ApiDef struct {
 }
 
 type ApiResults struct {
-	data []Datapoint
+	data      []Datapoint
+	createdAt time.Time
 }
 
 type Datapoint struct {
@@ -203,6 +205,7 @@ func (r *ApiResults) Display() {
 	for i := 0; i < len(r.data); i++ {
 		r.data[i].Transform()
 	}
+	fmt.Printf("%v\n", r.createdAt.Format(time.RFC850))
 	fmt.Println("------")
 }
 
@@ -238,6 +241,7 @@ func parseResponse(rsp []byte) (ApiResults, error) {
 		}
 
 		results.data = append(results.data, Datapoint{rsp[i], def.label, val})
+		results.createdAt = time.Now()
 		i += def.offset
 	}
 	return results, nil
