@@ -14,20 +14,27 @@ type ApiResults struct {
 	length   int
 }
 
-func (a *ApiResults) parse() {
+func (a *ApiResults) Parse() {
 	for i := 5; i < a.length+1; i++ {
 		field, found := ApiDefs[a.response[i]]
 		if !found {
-			fmt.Printf("Did not find field '% X', parsing stopped\n", a.response[i])
+			// fmt.Printf("Did not find field '% X', parsing stopped\n", a.response[i])
 			break
 		}
 
 		parsedField, offset := field.parseField(a.response[i:])
-		_ = append(a.data, parsedField)
+		a.data = append(a.data, parsedField)
 		i += offset
-		fmt.Println(parsedField.format())
 	}
 	return
+}
+
+func (r *ApiResults) Display() {
+	for i := 0; i < len(r.data); i++ {
+		fmt.Printf("%v\n", r.data[i].format())
+	}
+	fmt.Printf("%v\n", time.Now().Format(time.RFC850))
+	fmt.Println("------")
 }
 
 type weatherDataFormatter interface {
@@ -56,7 +63,7 @@ func (t temperatureData) format() string {
 	return fmt.Sprintf("[%v]%v\t%.1f%v\n", t.id, t.label, value, unit)
 }
 
-func (d *temperatureData) parseField(data []byte) (weatherDataParserFormatter, int) {
+func (d temperatureData) parseField(data []byte) (weatherDataParserFormatter, int) {
 	value := 0
 	x := data[1 : d.offset+1]
 
@@ -218,14 +225,6 @@ func lookupCardinalDirection(degree float64) (string, error) {
 
 }
 
-func (r *ApiResults) Display() {
-	for i := 0; i < len(r.data); i++ {
-		r.data[i].format()
-	}
-	fmt.Printf("%v\n", time.Now().Format(time.RFC850))
-	fmt.Println("------")
-}
-
 func parseResponse(rsp []byte) (ApiResults, error) {
 	rspLength := int(binary.BigEndian.Uint16(rsp[3:5]))
 	rspChecksum := rsp[rspLength+1]
@@ -236,7 +235,7 @@ func parseResponse(rsp []byte) (ApiResults, error) {
 		return results, errors.New("Checksum mismatch")
 	}
 
-	results.parse()
+	results.Parse()
 
 	return results, nil
 }
