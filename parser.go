@@ -7,83 +7,126 @@ import (
 	"time"
 )
 
-type ApiDef struct {
+type ApiResults struct {
+	data     []weatherDataFormatter
+	response []byte
+	checksum byte
+	length   int
+}
+
+func (a *ApiResults) parse() {
+	for i := 5; i < a.length+1; i++ {
+		field, found := ApiDefs[a.response[i]]
+		if !found {
+			fmt.Printf("Did not find field '% X', parsing stopped\n", a.response[i])
+			break
+		}
+
+		parsedField, offset := field.parseField(a.response[i:])
+		_ = append(a.data, parsedField)
+		i += offset
+		fmt.Println(parsedField.format())
+	}
+	return
+}
+
+type weatherDataFormatter interface {
+	format() string
+}
+
+type weatherDataParser interface {
+	parseField([]byte) (weatherDataParserFormatter, int)
+}
+
+type weatherDataParserFormatter interface {
+	weatherDataFormatter
+	weatherDataParser
+}
+
+type temperatureData struct {
+	id     byte
 	label  string
+	value  int
 	offset int
 }
 
-type ApiResults struct {
-	data      []Datapoint
-	createdAt time.Time
+func (t temperatureData) format() string {
+	unit := "\u00B0"
+	value := convertCtoF(float64(t.value / 10))
+	return fmt.Sprintf("[%v]%v\t%.1f%v\n", t.id, t.label, value, unit)
 }
 
-type Datapoint struct {
-	id    byte
-	label string
-	value int
-}
+func (d *temperatureData) parseField(data []byte) (weatherDataParserFormatter, int) {
+	value := 0
+	x := data[1 : d.offset+1]
 
-var ApiDefs = map[byte]ApiDef{
-	0x01: {"INTEMP", 2},
-	0x02: {"OUTTEMP", 2},
-	0x03: {"DEWPOINT", 2},
-	0x04: {"WINDCHILL", 2},
-	0x05: {"HEATINDEX", 2},
-	0x06: {"INHUMI", 1},
-	0x07: {"OUTHUMI", 1},
-	0x08: {"ABSBARO", 2},
-	0x09: {"RELBARO", 2},
-	0x0A: {"WINDDIRECTION", 2},
-	0x0B: {"WINDSPEED", 2},
-	0x0C: {"GUSTSPEED", 2},
-	0x0D: {"RAINEVENT", 2},
-	0x0E: {"RAINRATE", 2},
-	0x0F: {"RAINHOUR", 2},
-	0x10: {"RAINDAY", 2},
-	0x11: {"RAINWEEK", 2},
-	0x12: {"RAINMONTH", 4},
-	0x13: {"RAINYEAR", 4},
-	0x14: {"RAINTOTALS", 4},
-	0x15: {"LIGHT", 4},
-	0x16: {"UV", 2},
-	0x17: {"UVI", 1},
-	0x18: {"TIME", 6},
-	0x19: {"DAILYWINDMAX", 2},
-	0x1A: {"TEMP1", 2},
-	0x1B: {"TEMP2", 2},
-	0x1C: {"TEMP3", 2},
-	0x1D: {"TEMP4", 2},
-	0x1E: {"TEMP5", 2},
-	0x1F: {"TEMP6", 2},
-	0x20: {"TEMP7", 2},
-	0x21: {"TEMP8", 2},
-	0x22: {"HUM1", 2},
-	0x23: {"HUM2", 2},
-	0x24: {"HUM3", 2},
-	0x25: {"HUM4", 2},
-	0x26: {"HUM5", 2},
-	0x27: {"HUM6", 2},
-	0x28: {"HUM7", 2},
-	0x29: {"HUM8", 2},
-	0x4C: {"LOWBAT", 16},
-	0x80: {"PIEZO_RAIN_RATE", 2},
-	0x81: {"PIEZO_EVENT_RAIN", 2},
-	0x82: {"PIEZO_HOURLY_RAIN", 2},
-	0x83: {"PIEZO_DAILY_RAIN", 4},
-	0x84: {"PIEZO_WEEKLY_RAIN", 4},
-	0x85: {"PIEZO_MONTHLY_RAIN", 4},
-	0x86: {"PIEZO_YEARLY_RAIN", 4},
-	0x87: {"PIEZO_GAIN_10", 2 * 10},
-	0x88: {"PIEZO_RST_RAINTIME", 3},
-}
-
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
+	switch {
+	case d.offset == 1:
+		value = int(byte(x[0]))
+	case d.offset == 2:
+		value = int(binary.BigEndian.Uint16(x))
+	case d.offset == 4:
+		value = int(binary.BigEndian.Uint32(x))
+	case d.offset == 8:
+		value = int(binary.BigEndian.Uint64(x))
 	}
-	return false
+	d.value = value
+
+	return d, d.offset
+}
+
+var ApiDefs = map[byte]weatherDataParserFormatter{
+	0x01: &temperatureData{id: 0x01, label: "INTEMP", offset: 2},
+	// 0x02: {"OUTTEMP", 2},
+	// 0x03: {"DEWPOINT", 2},
+	// 0x04: {"WINDCHILL", 2},
+	// 0x05: {"HEATINDEX", 2},
+	// 0x06: {"INHUMI", 1},
+	// 0x07: {"OUTHUMI", 1},
+	// 0x08: {"ABSBARO", 2},
+	// 0x09: {"RELBARO", 2},
+	// 0x0A: {"WINDDIRECTION", 2},
+	// 0x0B: {"WINDSPEED", 2},
+	// 0x0C: {"GUSTSPEED", 2},
+	// 0x0D: {"RAINEVENT", 2},
+	// 0x0E: {"RAINRATE", 2},
+	// 0x0F: {"RAINHOUR", 2},
+	// 0x10: {"RAINDAY", 2},
+	// 0x11: {"RAINWEEK", 2},
+	// 0x12: {"RAINMONTH", 4},
+	// 0x13: {"RAINYEAR", 4},
+	// 0x14: {"RAINTOTALS", 4},
+	// 0x15: {"LIGHT", 4},
+	// 0x16: {"UV", 2},
+	// 0x17: {"UVI", 1},
+	// 0x18: {"TIME", 6},
+	// 0x19: {"DAILYWINDMAX", 2},
+	// 0x1A: {"TEMP1", 2},
+	// 0x1B: {"TEMP2", 2},
+	// 0x1C: {"TEMP3", 2},
+	// 0x1D: {"TEMP4", 2},
+	// 0x1E: {"TEMP5", 2},
+	// 0x1F: {"TEMP6", 2},
+	// 0x20: {"TEMP7", 2},
+	// 0x21: {"TEMP8", 2},
+	// 0x22: {"HUM1", 2},
+	// 0x23: {"HUM2", 2},
+	// 0x24: {"HUM3", 2},
+	// 0x25: {"HUM4", 2},
+	// 0x26: {"HUM5", 2},
+	// 0x27: {"HUM6", 2},
+	// 0x28: {"HUM7", 2},
+	// 0x29: {"HUM8", 2},
+	// 0x4C: {"LOWBAT", 16},
+	// 0x80: {"PIEZO_RAIN_RATE", 2},
+	// 0x81: {"PIEZO_EVENT_RAIN", 2},
+	// 0x82: {"PIEZO_HOURLY_RAIN", 2},
+	// 0x83: {"PIEZO_DAILY_RAIN", 4},
+	// 0x84: {"PIEZO_WEEKLY_RAIN", 4},
+	// 0x85: {"PIEZO_MONTHLY_RAIN", 4},
+	// 0x86: {"PIEZO_YEARLY_RAIN", 4},
+	// 0x87: {"PIEZO_GAIN_10", 2 * 10},
+	// 0x88: {"PIEZO_RST_RAINTIME", 3},
 }
 
 var temperatureFields = []string{
@@ -175,74 +218,25 @@ func lookupCardinalDirection(degree float64) (string, error) {
 
 }
 
-func (d *Datapoint) Transform() {
-	value := float64(d.value)
-	unit := ""
-
-	switch {
-	case stringInSlice(d.label, temperatureFields):
-		value = convertCtoF(value / 10)
-		unit = "\u00B0"
-	case stringInSlice(d.label, pressureFields):
-		value = convertHpaToInhg(value / 10)
-		unit = " inhg"
-	case stringInSlice(d.label, percentageFields):
-		unit = "%"
-	case stringInSlice(d.label, velocityFields):
-		value = convertMsToMph(value / 10)
-		unit = " mph"
-	case stringInSlice(d.label, lightFields):
-		value = convertLuxToWm2(value / 10)
-		unit = " w/m^2"
-	case stringInSlice(d.label, directionFields):
-		unit, _ = lookupCardinalDirection(value)
-	}
-
-	fmt.Printf("[%v]%v\t%.1f%v\n", d.id, d.label, value, unit)
-}
-
 func (r *ApiResults) Display() {
 	for i := 0; i < len(r.data); i++ {
-		r.data[i].Transform()
+		r.data[i].format()
 	}
-	fmt.Printf("%v\n", r.createdAt.Format(time.RFC850))
+	fmt.Printf("%v\n", time.Now().Format(time.RFC850))
 	fmt.Println("------")
 }
 
 func parseResponse(rsp []byte) (ApiResults, error) {
-	results := ApiResults{}
 	rspLength := int(binary.BigEndian.Uint16(rsp[3:5]))
 	rspChecksum := rsp[rspLength+1]
-	body := rsp[2 : rspLength+1]
+	results := ApiResults{response: rsp, length: rspLength, checksum: rspChecksum}
 
+	body := rsp[2 : results.length+1]
 	if calcChecksum(body) != rspChecksum {
 		return results, errors.New("Checksum mismatch")
 	}
 
-	for i := 5; i < rspLength+1; i++ {
-		def, found := ApiDefs[rsp[i]]
-		if !found {
-			fmt.Printf("Did not find field '% X', parsing stopped\n", rsp[i])
-			break
-		}
+	results.parse()
 
-		val := 0
-		x := rsp[i+1 : i+def.offset+1]
-
-		switch {
-		case def.offset == 1:
-			val = int(byte(x[0]))
-		case def.offset == 2:
-			val = int(binary.BigEndian.Uint16(x))
-		case def.offset == 4:
-			val = int(binary.BigEndian.Uint32(x))
-		case def.offset == 8:
-			val = int(binary.BigEndian.Uint64(x))
-		}
-
-		results.data = append(results.data, Datapoint{rsp[i], def.label, val})
-		results.createdAt = time.Now()
-		i += def.offset
-	}
 	return results, nil
 }
