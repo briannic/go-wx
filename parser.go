@@ -34,7 +34,7 @@ func (r *ApiResults) Display() {
 		fmt.Printf("%v\n", r.data[i].format())
 	}
 	fmt.Printf("%v\n", time.Now().Format(time.RFC850))
-	fmt.Println("------")
+	fmt.Printf("------\n\n")
 }
 
 type weatherDataFormatter interface {
