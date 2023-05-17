@@ -36,6 +36,7 @@ type ApiResults struct {
 func (a *ApiResults) Parse() {
 	for i := 5; i < a.length+1; i++ {
 		field, found := ApiDefs[a.response[i]]
+
 		if !found {
 			fmt.Printf("Did not find field '% X', parsing stopped\n", a.response[i])
 			break
