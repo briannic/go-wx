@@ -18,12 +18,12 @@ func (a *ApiResults) Parse() {
 	for i := 5; i < a.length+1; i++ {
 		field, found := ApiDefs[a.response[i]]
 		if !found {
-			// fmt.Printf("Did not find field '% X', parsing stopped\n", a.response[i])
+			fmt.Printf("Did not find field '% X', parsing stopped\n", a.response[i])
 			break
 		}
 
-		parsedField, offset := field.parseField(a.response[i:])
-		a.data = append(a.data, parsedField)
+		offset := field.parseField(a.response[i:])
+		a.data = append(a.data, field)
 		i += offset
 	}
 	return
@@ -42,7 +42,7 @@ type weatherDataFormatter interface {
 }
 
 type weatherDataParser interface {
-	parseField([]byte) (weatherDataParserFormatter, int)
+	parseField([]byte) int
 }
 
 type weatherDataParserFormatter interface {
@@ -50,20 +50,14 @@ type weatherDataParserFormatter interface {
 	weatherDataParser
 }
 
-type temperatureData struct {
+type field struct {
 	id     byte
 	label  string
 	value  int
 	offset int
 }
 
-func (t temperatureData) format() string {
-	unit := "\u00B0"
-	value := convertCtoF(float64(t.value / 10))
-	return fmt.Sprintf("[%v]%v\t%.1f%v\n", t.id, t.label, value, unit)
-}
-
-func (d temperatureData) parseField(data []byte) (weatherDataParserFormatter, int) {
+func (d *field) parseField(data []byte) int {
 	value := 0
 	x := data[1 : d.offset+1]
 
@@ -79,90 +73,124 @@ func (d temperatureData) parseField(data []byte) (weatherDataParserFormatter, in
 	}
 	d.value = value
 
-	return d, d.offset
+	return d.offset
+}
+
+type temperatureData struct {
+	field
+}
+
+func (t temperatureData) format() string {
+	unit := "\u00B0"
+	value := convertCtoF(float64(t.value / 10))
+	return fmt.Sprintf("[%v]%v\t%.1f%v", t.id, t.label, value, unit)
+}
+
+type percentageData struct {
+	field
+}
+
+func (t percentageData) format() string {
+	unit := "%"
+	return fmt.Sprintf("[%v]%v\t%v%v", t.id, t.label, t.value, unit)
+}
+
+type pressureData struct {
+	field
+}
+
+func (t pressureData) format() string {
+	value := convertHpaToInhg(float64(t.value / 10))
+	unit := " inhg"
+	return fmt.Sprintf("[%v]%v\t%.1f%v", t.id, t.label, value, unit)
+}
+
+type directionData struct {
+	field
+}
+
+func (t directionData) format() string {
+	value := float64(t.value)
+	unit, _ := lookupCardinalDirection(value)
+	return fmt.Sprintf("[%v]%v\t%.1f%v", t.id, t.label, value, unit)
+}
+
+type velocityData struct {
+	field
+}
+
+func (t velocityData) format() string {
+	value := convertMsToMph(float64(t.value) / 10)
+	unit := " mph"
+	return fmt.Sprintf("[%v]%v\t%.1f%v", t.id, t.label, value, unit)
+}
+
+type lightData struct {
+	field
+}
+
+func (t lightData) format() string {
+	value := convertLuxToWm2(float64(t.value) / 10)
+	unit := " w/m^2"
+	return fmt.Sprintf("[%v]%v\t%.1f%v", t.id, t.label, value, unit)
+}
+
+type uvData struct {
+	field
+}
+
+func (t uvData) format() string {
+	value := float64(t.value)
+	unit := " micro w/m^2"
+	return fmt.Sprintf("[%v]%v\t%.1f%v", t.id, t.label, value, unit)
+}
+
+type uviData struct {
+	field
+}
+
+func (t uviData) format() string {
+	value := float64(t.value)
+	unit := ""
+	return fmt.Sprintf("[%v]%v\t%.1f%v", t.id, t.label, value, unit)
+}
+
+type rainData struct {
+	field
+}
+
+func (t rainData) format() string {
+	value := float64(t.value)
+	unit := ""
+	return fmt.Sprintf("[%v]%v\t%.1f%v", t.id, t.label, value, unit)
 }
 
 var ApiDefs = map[byte]weatherDataParserFormatter{
-	0x01: &temperatureData{id: 0x01, label: "INTEMP", offset: 2},
-	// 0x02: {"OUTTEMP", 2},
-	// 0x03: {"DEWPOINT", 2},
-	// 0x04: {"WINDCHILL", 2},
-	// 0x05: {"HEATINDEX", 2},
-	// 0x06: {"INHUMI", 1},
-	// 0x07: {"OUTHUMI", 1},
-	// 0x08: {"ABSBARO", 2},
-	// 0x09: {"RELBARO", 2},
-	// 0x0A: {"WINDDIRECTION", 2},
-	// 0x0B: {"WINDSPEED", 2},
-	// 0x0C: {"GUSTSPEED", 2},
-	// 0x0D: {"RAINEVENT", 2},
-	// 0x0E: {"RAINRATE", 2},
-	// 0x0F: {"RAINHOUR", 2},
-	// 0x10: {"RAINDAY", 2},
-	// 0x11: {"RAINWEEK", 2},
-	// 0x12: {"RAINMONTH", 4},
-	// 0x13: {"RAINYEAR", 4},
-	// 0x14: {"RAINTOTALS", 4},
-	// 0x15: {"LIGHT", 4},
-	// 0x16: {"UV", 2},
-	// 0x17: {"UVI", 1},
-	// 0x18: {"TIME", 6},
-	// 0x19: {"DAILYWINDMAX", 2},
-	// 0x1A: {"TEMP1", 2},
-	// 0x1B: {"TEMP2", 2},
-	// 0x1C: {"TEMP3", 2},
-	// 0x1D: {"TEMP4", 2},
-	// 0x1E: {"TEMP5", 2},
-	// 0x1F: {"TEMP6", 2},
-	// 0x20: {"TEMP7", 2},
-	// 0x21: {"TEMP8", 2},
-	// 0x22: {"HUM1", 2},
-	// 0x23: {"HUM2", 2},
-	// 0x24: {"HUM3", 2},
-	// 0x25: {"HUM4", 2},
-	// 0x26: {"HUM5", 2},
-	// 0x27: {"HUM6", 2},
-	// 0x28: {"HUM7", 2},
-	// 0x29: {"HUM8", 2},
-	// 0x4C: {"LOWBAT", 16},
-	// 0x80: {"PIEZO_RAIN_RATE", 2},
-	// 0x81: {"PIEZO_EVENT_RAIN", 2},
-	// 0x82: {"PIEZO_HOURLY_RAIN", 2},
-	// 0x83: {"PIEZO_DAILY_RAIN", 4},
-	// 0x84: {"PIEZO_WEEKLY_RAIN", 4},
-	// 0x85: {"PIEZO_MONTHLY_RAIN", 4},
-	// 0x86: {"PIEZO_YEARLY_RAIN", 4},
-	// 0x87: {"PIEZO_GAIN_10", 2 * 10},
-	// 0x88: {"PIEZO_RST_RAINTIME", 3},
-}
-
-var temperatureFields = []string{
-	"INTEMP",
-	"OUTTEMP",
-}
-
-var pressureFields = []string{
-	"ABSBARO",
-	"RELBARO",
-}
-
-var percentageFields = []string{
-	"INHUMI",
-	"OUTHUMI",
-}
-
-var velocityFields = []string{
-	"WINDSPEED",
-	"GUSTSPEED",
-	"DAILYWINDMAX",
-}
-
-var lightFields = []string{
-	"LIGHT",
-}
-
-var directionFields = []string{
-	"WINDDIRECTION",
+	0x01: &temperatureData{field{id: 0x01, label: "INTEMP", offset: 2}},
+	0x02: &temperatureData{field{id: 0x02, label: "OUTTEMP", offset: 2}},
+	0x03: &temperatureData{field{id: 0x03, label: "DEWPOINT", offset: 2}},
+	0x04: &temperatureData{field{id: 0x04, label: "WINDCHILL", offset: 2}},
+	0x05: &temperatureData{field{id: 0x05, label: "HEATINDEX", offset: 2}},
+	0x06: &percentageData{field{id: 0x06, label: "INHUMI", offset: 1}},
+	0x07: &percentageData{field{id: 0x07, label: "OUTHUMI", offset: 1}},
+	0x08: &pressureData{field{id: 0x08, label: "ABSBARO", offset: 2}},
+	0x09: &pressureData{field{id: 0x09, label: "RELBARO", offset: 2}},
+	0x0A: &directionData{field{id: 0x0A, label: "WINDDIRECTION", offset: 2}},
+	0x0B: &velocityData{field{id: 0x0B, label: "WINDSPEED", offset: 2}},
+	0x0C: &velocityData{field{id: 0x0C, label: "GUSTSPEED", offset: 2}},
+	0x15: &lightData{field{id: 0x15, label: "LIGHT", offset: 4}},
+	0x16: &uvData{field{id: 0x16, label: "UV", offset: 2}},
+	0x17: &uviData{field{id: 0x17, label: "UVI", offset: 1}},
+	0x19: &velocityData{field{id: 0x19, label: "DAILYWINDMAX", offset: 2}},
+	0x80: &rainData{field{id: 0x81, label: "PIEZO_RAIN_RATE", offset: 2}},
+	0x81: &rainData{field{id: 0x81, label: "PIEZO_EVENT_RAIN", offset: 2}},
+	0x82: &rainData{field{id: 0x82, label: "PIEZO_HOURLY_RAIN", offset: 2}},
+	0x83: &rainData{field{id: 0x83, label: "PIEZO_DAILY_RAIN", offset: 4}},
+	0x84: &rainData{field{id: 0x84, label: "PIEZO_WEEKLY_RAIN", offset: 4}},
+	0x85: &rainData{field{id: 0x85, label: "PIEZO_MONTHLY_RAIN", offset: 4}},
+	0x86: &rainData{field{id: 0x86, label: "PIEZO_YEARLY_RAIN", offset: 4}},
+	0x87: &rainData{field{id: 0x87, label: "PIEZO_GAIN_10", offset: 2 * 10}},
+	0x88: &rainData{field{id: 0x88, label: "PIEZO_RST_RAINTIME", offset: 3}},
 }
 
 func convertCtoF(c float64) float64 {
