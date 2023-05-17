@@ -55,4 +55,14 @@ func TestParseResponse(t *testing.T) {
 	if got.length != want.length {
 		t.Errorf("Length: got %v, wanted %v", got.length, want.length)
 	}
+
+	for i, v := range got.data {
+		got_format := v.format()
+		want_format := want.data[i].format()
+
+		if !reflect.DeepEqual(got_format, want_format) {
+			t.Errorf("Format: got %v, wanted %v", got_format, want_format)
+		}
+
+	}
 }
