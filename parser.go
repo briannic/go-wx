@@ -7,6 +7,19 @@ import (
 	"time"
 )
 
+type weatherDataFormatter interface {
+	format() string
+}
+
+type weatherDataParser interface {
+	parseField([]byte) int
+}
+
+type weatherDataParserFormatter interface {
+	weatherDataFormatter
+	weatherDataParser
+}
+
 type ApiResults struct {
 	data     []weatherDataFormatter
 	response []byte
@@ -35,19 +48,6 @@ func (r *ApiResults) Display() {
 	}
 	fmt.Printf("%v\n", time.Now().Format(time.RFC850))
 	fmt.Printf("------\n\n")
-}
-
-type weatherDataFormatter interface {
-	format() string
-}
-
-type weatherDataParser interface {
-	parseField([]byte) int
-}
-
-type weatherDataParserFormatter interface {
-	weatherDataFormatter
-	weatherDataParser
 }
 
 type field struct {
@@ -155,14 +155,24 @@ func (t uviData) format() string {
 	return fmt.Sprintf("[%v]%v\t%.1f%v", t.id, t.label, value, unit)
 }
 
-type rainData struct {
+type rainAmountData struct {
 	field
 }
 
-func (t rainData) format() string {
-	value := float64(t.value)
-	unit := ""
-	return fmt.Sprintf("[%v]%v\t%.1f%v", t.id, t.label, value, unit)
+func (t rainAmountData) format() string {
+	value := convertMmToIn(float64(t.value) / 10)
+	unit := " in"
+	return fmt.Sprintf("[%v]%v\t%.2f%v", t.id, t.label, value, unit)
+}
+
+type rainRateData struct {
+	field
+}
+
+func (t rainRateData) format() string {
+	value := convertMmToIn(float64(t.value) / 10)
+	unit := " in/hr"
+	return fmt.Sprintf("[%v]%v\t%.2f%v", t.id, t.label, value, unit)
 }
 
 var ApiDefs = map[byte]weatherDataParserFormatter{
@@ -182,15 +192,15 @@ var ApiDefs = map[byte]weatherDataParserFormatter{
 	0x16: &uvData{field{id: 0x16, label: "UV", offset: 2}},
 	0x17: &uviData{field{id: 0x17, label: "UVI", offset: 1}},
 	0x19: &velocityData{field{id: 0x19, label: "DAILYWINDMAX", offset: 2}},
-	0x80: &rainData{field{id: 0x81, label: "PIEZO_RAIN_RATE", offset: 2}},
-	0x81: &rainData{field{id: 0x81, label: "PIEZO_EVENT_RAIN", offset: 2}},
-	0x82: &rainData{field{id: 0x82, label: "PIEZO_HOURLY_RAIN", offset: 2}},
-	0x83: &rainData{field{id: 0x83, label: "PIEZO_DAILY_RAIN", offset: 4}},
-	0x84: &rainData{field{id: 0x84, label: "PIEZO_WEEKLY_RAIN", offset: 4}},
-	0x85: &rainData{field{id: 0x85, label: "PIEZO_MONTHLY_RAIN", offset: 4}},
-	0x86: &rainData{field{id: 0x86, label: "PIEZO_YEARLY_RAIN", offset: 4}},
-	0x87: &rainData{field{id: 0x87, label: "PIEZO_GAIN_10", offset: 2 * 10}},
-	0x88: &rainData{field{id: 0x88, label: "PIEZO_RST_RAINTIME", offset: 3}},
+	0x80: &rainRateData{field{id: 0x81, label: "PIEZO_RAIN_RATE", offset: 2}},
+	0x81: &rainAmountData{field{id: 0x81, label: "PIEZO_EVENT_RAIN", offset: 2}},
+	0x82: &rainAmountData{field{id: 0x82, label: "PIEZO_HOURLY_RAIN", offset: 2}},
+	0x83: &rainAmountData{field{id: 0x83, label: "PIEZO_DAILY_RAIN", offset: 4}},
+	0x84: &rainAmountData{field{id: 0x84, label: "PIEZO_WEEKLY_RAIN", offset: 4}},
+	0x85: &rainAmountData{field{id: 0x85, label: "PIEZO_MONTHLY_RAIN", offset: 4}},
+	0x86: &rainAmountData{field{id: 0x86, label: "PIEZO_YEARLY_RAIN", offset: 4}},
+	0x87: &rainAmountData{field{id: 0x87, label: "PIEZO_GAIN_10", offset: 2 * 10}},
+	0x88: &rainAmountData{field{id: 0x88, label: "PIEZO_RST_RAINTIME", offset: 3}},
 }
 
 func convertCtoF(c float64) float64 {
@@ -207,6 +217,10 @@ func convertMsToMph(h float64) float64 {
 
 func convertLuxToWm2(h float64) float64 {
 	return h * 0.0079
+}
+
+func convertMmToIn(h float64) float64 {
+	return h / 25.4
 }
 
 func lookupCardinalDirection(degree float64) (string, error) {
