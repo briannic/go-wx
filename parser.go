@@ -20,6 +20,8 @@ type weatherDataParserFormatter interface {
 	weatherDataParser
 }
 
+// ApiResults is a container for data (raw, meta, and parsed)
+// from the EcoWitt GW1100 LAN/WIFI Gateway.
 type ApiResults struct {
 	data     []weatherDataFormatter
 	response []byte
@@ -27,6 +29,10 @@ type ApiResults struct {
 	length   int
 }
 
+// ApiResults.Parse() processes the binary API data bit by bit
+// Matching fields to the definitions stored in ApiDefs.
+// Parsing will stop when any unknown data is encountered due
+// to the fixed width structure of the data.
 func (a *ApiResults) Parse() {
 	for i := 5; i < a.length+1; i++ {
 		field, found := ApiDefs[a.response[i]]
@@ -42,6 +48,9 @@ func (a *ApiResults) Parse() {
 	return
 }
 
+// ApiResults.Display() calls the format() interface for each
+// data point stored in the struct and outputs a properly labeled
+// and formatted data summary.
 func (r *ApiResults) Display() {
 	for i := 0; i < len(r.data); i++ {
 		fmt.Printf("%v\n", r.data[i].format())
@@ -50,6 +59,7 @@ func (r *ApiResults) Display() {
 	fmt.Printf("------\n\n")
 }
 
+// Generic container for weather data.
 type field struct {
 	id     byte
 	label  string
@@ -57,6 +67,8 @@ type field struct {
 	offset int
 }
 
+// Parses binary data given a known byte offset,
+// type casts and stores the collected data.
 func (d *field) parseField(data []byte) int {
 	value := 0
 	x := data[1 : d.offset+1]
@@ -175,6 +187,13 @@ func (t rainRateData) format() string {
 	return fmt.Sprintf("[%v]%v\t%.2f%v", t.id, t.label, value, unit)
 }
 
+// This map organizes the EcoWitt GW1100 data format used for parsing and formatting.
+// The map keys are byte flags as defined in the EcoWitt data specification.
+//
+// See: [Data Manual V1.6.4](https://osswww.ecowitt.net/uploads/20220407/WN1900%20GW1000,1100%20WH2680,2650%20telenet%20v1.6.4.pdf)
+//
+// The map values are unit specific structs, with overloaded methods to properly
+// convert and format data for output.
 var ApiDefs = map[byte]weatherDataParserFormatter{
 	0x01: &temperatureData{field{id: 0x01, label: "INTEMP", offset: 2}},
 	0x02: &temperatureData{field{id: 0x02, label: "OUTTEMP", offset: 2}},
