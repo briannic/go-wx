@@ -54,6 +54,9 @@ func getWxData(cmd []byte) {
 }
 
 func main() {
+	w := WeatherDB{}
+	w.Insert()
+
 	getWxData([]byte("\x27"))
 	getWxData([]byte("\x57"))
 }
