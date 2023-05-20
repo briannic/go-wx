@@ -41,7 +41,7 @@ func TestParseResponse(t *testing.T) {
 	got, error := parseResponse(input)
 
 	if error != nil {
-		t.Errorf("got %v, wanted %v", error, nil)
+		t.Errorf("Error: got %v, wanted %v", error, nil)
 	}
 
 	if !reflect.DeepEqual(got.response, want.response) {
