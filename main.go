@@ -5,16 +5,6 @@ import (
 	"net"
 )
 
-func calcChecksum(body []byte) byte {
-	checksum := 0
-
-	for i := 0; i < len(body); i++ {
-		checksum += int(body[i])
-	}
-
-	return byte(checksum % 256)
-}
-
 func createMsg(cmd []byte, payload []byte) []byte {
 	hdr := []byte("\xff\xff")
 	size := []byte{byte(3 + len(payload))}

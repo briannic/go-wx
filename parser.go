@@ -287,6 +287,16 @@ func lookupCardinalDirection(degree float64) (string, error) {
 
 }
 
+func calcChecksum(body []byte) byte {
+	checksum := 0
+
+	for i := 0; i < len(body); i++ {
+		checksum += int(body[i])
+	}
+
+	return byte(checksum % 256)
+}
+
 func parseResponse(rsp []byte) (ApiResults, error) {
 	rspLength := int(binary.BigEndian.Uint16(rsp[3:5]))
 	rspChecksum := rsp[rspLength+1]
