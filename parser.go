@@ -287,7 +287,7 @@ func lookupCardinalDirection(degree float64) (string, error) {
 
 }
 
-func calcChecksum(body []byte) byte {
+func CalcChecksum(body []byte) byte {
 	checksum := 0
 
 	for i := 0; i < len(body); i++ {
@@ -297,13 +297,13 @@ func calcChecksum(body []byte) byte {
 	return byte(checksum % 256)
 }
 
-func parseResponse(rsp []byte) (ApiResults, error) {
+func ParseResponse(rsp []byte) (ApiResults, error) {
 	rspLength := int(binary.BigEndian.Uint16(rsp[3:5]))
 	rspChecksum := rsp[rspLength+1]
 	results := ApiResults{response: rsp, length: rspLength, checksum: rspChecksum}
 
 	body := rsp[2 : results.length+1]
-	if calcChecksum(body) != rspChecksum {
+	if CalcChecksum(body) != rspChecksum {
 		return results, errors.New("Checksum mismatch")
 	}
 

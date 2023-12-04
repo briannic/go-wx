@@ -38,7 +38,7 @@ func TestParseResponse(t *testing.T) {
 		length:   42,
 	}
 
-	got, error := parseResponse(input)
+	got, error := ParseResponse(input)
 
 	if error != nil {
 		t.Errorf("Error: got %v, wanted %v", error, nil)
@@ -70,7 +70,7 @@ func TestParseResponse(t *testing.T) {
 func TestCalcChecksum(t *testing.T) {
 	want := byte(42)
 	input := []byte("\x27\x03")
-	got := calcChecksum(input)
+	got := CalcChecksum(input)
 
 	if want != got {
 		t.Errorf("got %x, wanted %x", got, want)

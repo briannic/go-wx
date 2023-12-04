@@ -14,7 +14,7 @@ func createMsg(cmd []byte, payload []byte) []byte {
 	msg = append(msg, size...)
 	msg = append(msg, payload...)
 
-	cs := calcChecksum(msg[len(hdr):])
+	cs := CalcChecksum(msg[len(hdr):])
 	msg = append(msg, cs)
 	return msg
 }
@@ -45,7 +45,7 @@ func getWxData(cmd []byte) {
 		fmt.Println(err)
 	}
 
-	results, err := parseResponse(response)
+	results, err := ParseResponse(response)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -54,8 +54,7 @@ func getWxData(cmd []byte) {
 }
 
 func main() {
-	w := WeatherDB{}
-	w.Insert()
+	// w := WeatherDB{}
 
 	getWxData([]byte("\x27"))
 	getWxData([]byte("\x57"))
